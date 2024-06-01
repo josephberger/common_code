@@ -1,0 +1,27 @@
+def format_single_dict(data, preamble=None, footer=None):
+    def calculate_max_widths():
+        max_key_width = max(len(str(key)) for key in data.keys())
+        max_value_width = max(len(str(value)) for value in data.values())
+        return max_key_width, max_value_width
+
+    def format_data(max_key_width):
+        spacing = 2
+        lines = []
+        for key, value in data.items():
+            lines.append(f"{key:<{max_key_width + spacing}}{value}")
+        return "\n".join(lines)
+
+    output = ""
+
+    if preamble:
+        output += preamble + "\n\n"
+
+    max_key_width, _ = calculate_max_widths()
+    data_str = format_data(max_key_width)
+
+    output += data_str
+
+    if footer:
+        output += "\n\n" + "\n".join(footer)
+
+    return output + "\n"
