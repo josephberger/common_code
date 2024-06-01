@@ -1,0 +1,45 @@
+def format_table(headers, results=None, preamble=None, footer=None):
+    def calculate_max_widths():
+        max_widths = {}
+        for header, key in headers.items():
+            header_width = len(str(header))
+            value_width = max(len(str(r[key])) for r in results)
+            max_widths[header] = max(header_width, value_width)
+        return max_widths
+
+    def create_format_string(max_widths):
+        spacing = 2
+        return " ".join(f"{{:<{width+spacing}}}" for width in max_widths.values())
+
+    def format_header(format_string):
+        header_str = format_string.format(*headers.keys())
+        return header_str
+
+    def format_data(format_string):
+        data_strs = []
+        for r in results:
+            result_values = [r[key] for key in headers.values()]
+            result_str = format_string.format(*result_values)
+            data_strs.append(result_str)
+        return "\n".join(data_strs)
+
+    output = ""
+
+    if preamble:
+        output += preamble + "\n\n"
+
+    if results:
+        max_widths = calculate_max_widths()
+        format_string = create_format_string(max_widths)
+
+        header_str = format_header(format_string)
+        data_str = format_data(format_string)
+
+        output += header_str + "\n" + data_str
+
+    if footer:
+        if results:
+            output += "\n\n"
+        output += "\n".join(footer)
+
+    return output + "\n"
