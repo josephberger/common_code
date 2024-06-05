@@ -1,0 +1,38 @@
+def format_list_into_columns(data, num_columns=None, auto=True):
+    if auto:
+        if num_columns is not None:
+            raise ValueError("Auto mode is enabled, num_columns argument should not be provided")
+        
+        total_items = len(data)
+        
+        if total_items <= 40:
+            num_columns = 1
+        elif total_items <= 80:
+            num_columns = 2
+        elif total_items <= 180:
+            num_columns = 3
+        else:
+            num_columns = 4
+    
+    if num_columns is not None and (num_columns < 1 or num_columns > 4):
+        raise ValueError("Number of columns must be between 1 and 4")
+
+    if num_columns is None:
+        raise ValueError("Number of columns must be specified when auto mode is disabled")
+
+    # Calculate the number of rows needed and round to the nearest whole number
+    num_rows = (len(data) + num_columns - 1) // num_columns
+
+    # Create a list of rows, each containing num_columns elements
+    rows = [data[i * num_columns:(i + 1) * num_columns] for i in range(num_rows)]
+
+    # Calculate the maximum width of each column
+    col_widths = [max(len(str(rows[row][col])) for row in range(len(rows)) if col < len(rows[row])) for col in range(num_columns)]
+
+    # Format the rows into columns
+    formatted_rows = []
+    for row in rows:
+        formatted_row = "".join(f"{str(item):<{col_widths[i] + 2}}" for i, item in enumerate(row))
+        formatted_rows.append(formatted_row)
+
+    return "\n".join(formatted_rows)
