@@ -3,6 +3,7 @@ import ssl
 import argparse
 import concurrent.futures
 import traceback
+import select
 
 class GenericServer:
 
@@ -11,9 +12,9 @@ class GenericServer:
 
         # Socket configuration
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((server_addr, server_port))
         self.server_socket.listen(5)
-        self.server_socket.settimeout(10)
 
         # SSL configuration
         self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -21,32 +22,37 @@ class GenericServer:
 
         # Server variables
         self.active = True
+        self.connections = []
 
     def run(self):
         """Main loop to accept and handle client connections."""
         try:
             while self.active:
-                try:
-                    client_socket, client_address = self.server_socket.accept()
-                    
-                    # Wrap socket with SSL
-                    ssl_client_socket = self.ssl_context.wrap_socket(client_socket, server_side=True)
-                    new_client = ClientHandler(ssl_client_socket, client_address)
-                    new_client.handle_client()
-                
-                except socket.timeout:
-                    # Continue to accept new connections after timeout
-                    continue
-                
-                except ssl.SSLError as e:
-                    print(f"SSL error: {e}")
-                
-                except Exception as e:
-                    print(f"Server error: {e}")
-                    print(traceback.format_exc())
+                # Use select to wait for incoming connections or activity on existing connections
+                readable, _, _ = select.select([self.server_socket] + self.connections, [], [], 1)
 
+                for s in readable:
+                    if s is self.server_socket:
+                        # Handle new client connection
+                        client_socket, client_address = self.server_socket.accept()
+                        
+                        # Wrap socket with SSL
+                        ssl_client_socket = self.ssl_context.wrap_socket(client_socket, server_side=True)
+                        
+                        # Add new SSL-wrapped client socket to the list of connections
+                        self.connections.append(ssl_client_socket)
+                        
+                        # Create a handler for the new client and start handling it
+                        new_client = ClientHandler(ssl_client_socket, client_address)
+                        new_client.handle_client()
+                    else:
+                        # Handle data from an existing connection (clean up closed connections)
+                        self.connections.remove(s)
+                        s.close()
+                
         except Exception as e:
             print(f"Server error: {e}")
+            print(traceback.format_exc())
         
         finally:
             self.server_socket.close()
